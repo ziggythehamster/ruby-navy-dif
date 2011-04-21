@@ -5,11 +5,30 @@
 
 DIF_VERSION = "1.0"
 
-# An error class, for rescuing.
+# Error classes, for rescuing.
 class DifError < StandardError; end
+class DifInvalidSpecialValueError < DifError; end
+class DifInvalidNumericTypeError < DifError; end
+class DifInvalidIndicatorError < DifError; end
 
-# The
-class Dif
+# This class provides DIF reading capabilities.
+# A writer would be a good idea, but since I have
+# no desire to open anything in VisiCalc, writing
+# is not implemented.
+#
+# Usage: dif = DifReader.new(iostream)
+#
+# Example:
+#
+#   dif = nil
+#   File.open("blah.dif") do |f|
+#     dif = DifReader.new(f)
+#   end
+class DifReader
+	attr_reader :data
+	attr_reader :header
+	attr_reader :vectors
+
 	def initialize(ios)
 		@data = []
 		@header = {}
@@ -18,12 +37,14 @@ class Dif
 		# Get the first line, which is a header
 		line = ios.readline.rstrip.upcase
 		header = true
+		data_line = nil
 		
 		while line
 			if header
+				# Process the header lines.
 				if line == "DATA"
+					# Switch to data mode
 					header = false
-					tup = nil
 					ios.readline # skip line after data, "0,0" in my case
 					ios.readline # skip the line after 0,0, '""' in my case
 				else
@@ -40,7 +61,56 @@ class Dif
 						@vectors[n[0]-1] = n[2] # fill in labels if we get them.
 					end
 				end
+			else
+				# Handle the data.
+				n = line.split(",").collect { |x| x.to_i }
+				s = ios.readline.rstrip
+				if n[0] == -1
+					# special data values / control codes
+					if s.downcase.to_sym == :bot
+						# beginning of data/tuple
+						@data << data_line if data_line
+						data_line = []
+					elsif s.downcase.to_sym == :eod
+						# end of document
+						@data << data_line
+						line = nil # breaks out of the loop.
+					else
+						raise DifInvalidSpecialValueError, "Invalid special data value [#{s}]"
+					end
+				elsif n[0] == 0
+					# numeric values
+					if ["V", "TRUE", "FALSE"].include?(s)
+						data_line << n[1]
+					elsif ["NA", "ERROR"].include?(s)
+						data_line << nil
+					else
+						raise DifInvalidNumericTypeError, "Invalid numeric data type [#{s}]"
+					end
+				elsif n[0] == 1
+					# strings
+					s.strip!
+					s = s[1...-1] if  s[0] == '"' # remove quotes if needed.
+					data_line << s
+				else
+					raise DifInvalidIndicatorError, "Invalid type indicator [#{n[0]}]"
+				end
 			end
 		end
+	end
+
+	# Returns the length of the data (number of rows)
+	def length
+		self.data.length
+	end
+
+	# Returns a row. Each row will be returned as a Hash.
+	# Thus, dif[0]["TITLE"] would return the "TITLE" field of the row.
+	# If you want indexed access, use #data instead.
+	def [](i)
+		row = self.data[i]
+		row_hsh = {}
+		row.each { |cell| row_hsh[self.vectors[i]] = cell }
+		return row_hsh
 	end
 end
