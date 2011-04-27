@@ -92,7 +92,7 @@ class DifReader
 				elsif n[0] == 1
 					# strings
 					s.strip!
-					s = s[1...-1] if  s[0] == '"' # remove quotes if needed.
+					s = s[1...-1] if s =~ /^".*"$/ # remove quotes if needed.
 					data_line << s
 				else
 					raise DifInvalidIndicatorError, "Invalid type indicator [#{n[0]}]"
