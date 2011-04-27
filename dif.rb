@@ -25,6 +25,8 @@ class DifInvalidIndicatorError < DifError; end
 #     dif = DifReader.new(f)
 #   end
 class DifReader
+	include Enumerable
+	
 	attr_reader :data
 	attr_reader :header
 	attr_reader :vectors
@@ -104,13 +106,8 @@ class DifReader
 		self.data.length
 	end
 
-	# Returns a row. Each row will be returned as a Hash.
-	# Thus, dif[0]["TITLE"] would return the "TITLE" field of the row.
-	# If you want indexed access, use #data instead.
-	def [](i)
-		row = self.data[i]
-		row_hsh = {}
-		row.each { |cell| row_hsh[self.vectors[i]] = cell }
-		return row_hsh
+	# Iterates each item - used by Enumerable.
+	def each &block
+		self.data.each { |d| block.call(d) }
 	end
 end
