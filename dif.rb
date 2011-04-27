@@ -98,7 +98,17 @@ class DifReader
 					raise DifInvalidIndicatorError, "Invalid type indicator [#{n[0]}]"
 				end
 			end
+
+			line = ios.readline.rstrip.upcase unless line.nil?
 		end
+	end
+
+	# Returns a row as a hash.
+	def row_as_hash(index)
+		row = self.data[index]
+		row_hsh = {}
+		row.each { |cell| row_hsh[self.vectors[index]] = cell }
+		return row_hsh.freeze
 	end
 
 	# Returns the length of the data (number of rows)
