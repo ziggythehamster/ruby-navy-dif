@@ -71,11 +71,11 @@ class DifReader
 					# special data values / control codes
 					if s.downcase.to_sym == :bot
 						# beginning of data/tuple
-						@data << data_line if data_line
+						@data << row_to_hash(data_line) if data_line
 						data_line = []
 					elsif s.downcase.to_sym == :eod
 						# end of document
-						@data << data_line
+						@data << row_to_hash(data_line)
 						line = nil # breaks out of the loop.
 					else
 						raise DifInvalidSpecialValueError, "Invalid special data value [#{s}]"
@@ -103,14 +103,6 @@ class DifReader
 		end
 	end
 
-	# Returns a row as a hash.
-	def row_as_hash(index)
-		row = self.data[index]
-		row_hsh = {}
-		row.each { |cell| row_hsh[self.vectors[index]] = cell }
-		return row_hsh.freeze
-	end
-
 	# Returns the length of the data (number of rows)
 	def length
 		self.data.length
@@ -120,4 +112,14 @@ class DifReader
 	def each &block
 		self.data.each { |d| block.call(d) }
 	end
+
+	private
+		# Takes a data line/row and makes it hashy.
+		def row_to_hash(row)
+			hsh = {}
+			row.each_index do |idx|
+				hsh[@vectors[idx]] = row[idx]
+			end
+			return hsh
+		end
 end
